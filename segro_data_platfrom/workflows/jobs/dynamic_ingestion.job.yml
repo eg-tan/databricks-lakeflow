@@ -1,0 +1,35 @@
+resources:
+  jobs:
+    dynamic_ingestion:
+      name: dynamic_ingestion
+      tasks:
+        - task_key: read_yml_config
+          notebook_task:
+            notebook_path: ../../ingestion/utilities/nb_read_yml_config.py
+            source: WORKSPACE
+        - task_key: dynamic_cdf_ingestion
+          depends_on:
+            - task_key: read_yml_config
+          for_each_task:
+            inputs: "{{tasks.read_yml_config.values.table_configs}}"
+            concurrency: 3
+            task:
+              task_key: ingestion_notebook
+              notebook_task:
+                notebook_path: ../../ingestion/nb_cdf_ingestion.py
+                base_parameters:
+                  TABLE_NAME: "{{input.TABLE_NAME}}"
+                  SOURCE_TABLE_PATH: "{{input.SOURCE_TABLE_PATH}}"
+                  TARGET_TABLE_PATH: "{{input.TARGET_TABLE_PATH}}"
+                  SOURCE_SYSTEM: "{{input.SOURCE_SYSTEM}}"
+                source: WORKSPACE
+              environment_key: Default
+      queue:
+        enabled: true
+      environments:
+        - environment_key: Default
+          spec:
+            environment_version: "4"
+      run_as:
+        service_principal_name: admin@vertlib00gmail.onmicrosoft.com
+      performance_target: PERFORMANCE_OPTIMIZED

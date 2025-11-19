@@ -1,0 +1,10 @@
+source_system: OAH
+source_system_path: abfss://landing@stsegdbxpocnewdev.dfs.core.windows.net/delta
+target_system_path: abfss://landing@stsegdbxpocnewdev.dfs.core.windows.net/raw_delta_hist/oah
+
+tables:
+  - table_name: h_order
+  - table_name: h_supplier
+  - table_name: h_partsupp
+
+

@@ -1,0 +1,11 @@
+resources:
+  pipelines:
+    lakeflow_silver:
+      name: lakeflow_silver
+      libraries:
+        - glob:
+            include: ../../lakeflow/transformations/silver/**
+      schema: silver
+      catalog: dev
+      serverless: true
+      root_path: ${workspace.file_path}/lakeflow

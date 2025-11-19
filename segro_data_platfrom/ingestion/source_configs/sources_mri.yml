@@ -1,0 +1,20 @@
+source_system: MRI
+source_system_path: abfss://landing@stsegdbxpocnewdev.dfs.core.windows.net/delta
+target_system_path: abfss://landing@stsegdbxpocnewdev.dfs.core.windows.net/raw_delta_hist/mri
+
+tables:
+  - table_name: h_customer
+    description: "magic table (from load)"
+    #schema_path: schema/h_customer
+
+  - table_name: h_nation
+    description: "magic table (from load)"
+    #schema_path: schema/h_nation
+
+  - table_name: h_region
+    description: "magic table (from load)"
+    #schema_path: schema/h_region
+
+  - table_name: h_part
+    description: "magic table (from load)"
+    #schema_path: schema/h_part

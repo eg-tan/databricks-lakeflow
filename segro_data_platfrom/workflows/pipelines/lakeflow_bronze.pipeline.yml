@@ -1,0 +1,11 @@
+resources:
+  pipelines:
+    lakeflow_bronze:
+      name: lakeflow_bronze
+      libraries:
+        - glob:
+            include: ../../lakeflow/transformations/bronze/**
+      schema: bronze
+      catalog: dev
+      serverless: true
+      root_path: ${workspace.file_path}/lakeflow

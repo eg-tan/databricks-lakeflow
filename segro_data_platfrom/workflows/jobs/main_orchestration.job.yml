@@ -1,0 +1,39 @@
+resources:
+  jobs:
+    main_orchestration:
+      name: "main_orchestration"
+      email_notifications:
+        on_success:
+          - tanstandart@gmail.com
+        on_failure:
+          - tanstandart@gmail.com
+      max_concurrent_runs: 4
+      tasks:
+        - task_key: load_mri_part
+          run_job_task:
+            job_id: ${resources.jobs.dynamic_ingestion.id}
+            job_parameters:
+              CONFIG_PATH: ${workspace.file_path}/ingestion/source_configs/sources_mri.yml
+        - task_key: load_oah_part
+          run_job_task:
+            job_id: ${resources.jobs.dynamic_ingestion.id}
+            job_parameters:
+              CONFIG_PATH: ${workspace.file_path}/ingestion/source_configs/sources_oah.yml
+        - task_key: load_bronze
+          depends_on:
+            - task_key: load_mri_part
+            - task_key: load_oah_part
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lakeflow_bronze.id}
+        - task_key: load_silver
+          depends_on:
+            - task_key: load_bronze
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.lakeflow_silver.id}
+      tags:
+        dev: admin
+      queue:
+        enabled: true
+      run_as:
+        service_principal_name: admin@vertlib00gmail.onmicrosoft.com
+      performance_target: STANDARD
