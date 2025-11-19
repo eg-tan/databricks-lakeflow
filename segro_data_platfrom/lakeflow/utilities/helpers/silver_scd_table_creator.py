@@ -23,11 +23,10 @@ def create_silver_scd_table(
     tracks changes using either SCD Type 1 (updates in place) or SCD Type 2 (historical tracking).
     
     Args:
-        entity_name: Base name for the entity (e.g., "region", "customer").
-                    Must be non-empty and contain only alphanumeric characters and underscores.
-        business_keys: List of column names that form the primary key.
-                      Must contain at least one valid column name.
-        scd_type: SCD type - either 1 (update in place) or 2 (track history). Defaults to 2.
+        entity_name: Base name for the entity - Required
+        business_keys: List of column names that form the primary key - Required
+        scd_type: SCD type - either 1 (update in place) or 2 (track history). Defaults to 2. - Required
+
         source_view: Name of the source view. Defaults to f"vw_{entity_name}_cleaned".
         custom_table_properties: Additional Delta table properties to merge with defaults.
         custom_except_columns: Column names to exclude from CDC tracking.
@@ -74,7 +73,7 @@ def create_silver_scd_table(
     # ========================================
     
     source_view = source_view or f"vw_{entity_name}_cleaned"
-    silver_table = f"stbl_slv_{entity_name}"
+    silver_table = f"stbl_{entity_name}"
     
     # Default table properties with enhanced optimization
     table_properties = {

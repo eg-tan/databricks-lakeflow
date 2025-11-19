@@ -3,7 +3,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, IntegerType
 
 from utilities.functions.common_functions import get_business_key, get_silver_metadata_columns
-from utilities.helpers.silver_scd_stream_builder import create_silver_scd_table
+from utilities.helpers.silver_scd_table_creator import create_silver_scd_table
 
 ENTITY_NAME = 'mri_nation'
 

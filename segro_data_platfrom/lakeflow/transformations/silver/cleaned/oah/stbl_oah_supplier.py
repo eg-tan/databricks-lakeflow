@@ -3,9 +3,9 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, IntegerType
 
 from utilities.functions.common_functions import get_business_key, get_silver_metadata_columns
-from utilities.helpers.silver_scd_stream_builder import create_silver_scd_table
+from utilities.helpers.silver_scd_table_creator import create_silver_scd_table
 
-ENTITY_NAME = 'mri_part'
+ENTITY_NAME = 'oah_supplier'
 
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
@@ -19,22 +19,20 @@ def create_temp_view():
 
     return (
         spark.readStream
-            .table("bronze.stbl_mri_part")
+            .table("bronze.stbl_oah_supplier")
             .select(
                 
                 # Business keys
-                get_business_key(["p_partkey", "_source_system"]),
+                get_business_key(["s_suppkey", "_source_system"]),
 
                 # Core attributes
-                F.col("p_partkey").cast("int").alias("p_partkey"),
-                F.col("p_name"),
-                F.col("p_mfgr").cast("string").alias("p_mfgr"),
-                F.col("p_brand").cast("string").alias("p_brand"),
-                F.col("p_type"),
-                F.col("p_size").cast("int").alias("p_size"),
-                F.col("p_container").cast("string").alias("p_container"),
-                F.col("p_retailprice").cast("int").alias("p_retailprice"),
-                F.col("p_comment"),
+                F.col("s_suppkey").cast("int").alias("s_suppkey"),
+                F.col("s_name").cast("string").alias("s_name"),
+                F.col("s_address"),
+                F.col("s_nationkey").cast("int").alias("s_nationkey"),
+                F.col("s_phone").cast("string").alias("s_phone"),
+                F.col("s_acctbal").cast("double").alias("s_acctbal"),
+                F.col("s_comment"),
 
                 # Additional Metadata
                 *get_silver_metadata_columns()
@@ -49,6 +47,6 @@ def create_temp_view():
 
 create_silver_scd_table(
     entity_name=ENTITY_NAME,
-    business_keys=["p_partkey"],
+    business_keys=["s_suppkey"],
     scd_type=2
 )

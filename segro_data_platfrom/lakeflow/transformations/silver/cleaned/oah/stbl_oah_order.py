@@ -3,10 +3,10 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, IntegerType
 
 from utilities.functions.common_functions import get_business_key, get_silver_metadata_columns
-from utilities.helpers.silver_scd_stream_builder import create_silver_scd_table
+from utilities.helpers.silver_scd_table_creator import create_silver_scd_table
 
 
-ENTITY_NAME = 'oah_partsupp'
+ENTITY_NAME = 'oah_order'
 
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
@@ -20,18 +20,22 @@ def create_temp_view():
 
     return (
         spark.readStream
-            .table("bronze.stbl_oah_partsupp")
+            .table("bronze.stbl_oah_order")
             .select(
                 
                 # Business keys
-                get_business_key(["ps_partkey", "ps_suppkey", "_source_system"]),
+                get_business_key(["o_orderkey", "_source_system"]),
 
                 # Core attributes
-                F.col("ps_partkey").cast("int").alias("ps_partkey"),
-                F.col("ps_suppkey").cast("int").alias("ps_suppkey"),
-                F.col("ps_availqty").cast("int").alias("ps_availqty"),
-                F.col("ps_supplycost").cast("double").alias("ps_supplycost"),
-                F.col("ps_comment"),
+                F.col("o_orderkey").cast("int").alias("o_orderkey"),
+                F.col("o_custkey").cast("int").alias("o_custkey"),
+                F.substring(F.col("o_orderstatus"), 1, 1).cast("string").alias("o_orderstatus"),
+                F.col("o_totalprice").cast("double").alias("o_totalprice"),
+                F.col("o_orderdate").cast("date").alias("o_orderdate"),
+                F.col("o_orderpriority").cast("string").alias("o_orderpriority"),
+                F.col("o_clerk").cast("string").alias("o_clerk"),
+                F.col("o_shippriority").cast("int").alias("o_shippriority"),
+                F.col("o_comment"),
 
                 # Additional Metadata
                 *get_silver_metadata_columns()
@@ -46,6 +50,6 @@ def create_temp_view():
 
 create_silver_scd_table(
     entity_name=ENTITY_NAME,
-    business_keys=["ps_partkey", "ps_suppkey"],
+    business_keys=["o_orderkey"],
     scd_type=2
 )

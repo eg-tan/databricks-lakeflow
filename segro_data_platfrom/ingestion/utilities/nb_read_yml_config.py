@@ -1,4 +1,13 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC #### Configuration Setup
+# MAGIC
+# MAGIC This notebook reads a YAML configuration file and transforms it into a standardized 
+# MAGIC format for table processing. It creates a list of table configurations with source 
+# MAGIC and target paths, and stores the result as a task value for downstream Databricks workflow tasks.
+
+# COMMAND ----------
+
 dbutils.widgets.text(
     "CONFIG_PATH",
     "...",
