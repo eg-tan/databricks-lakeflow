@@ -5,32 +5,30 @@ from pyspark.sql.types import StringType, IntegerType
 import utilities.functions.common_functions as utils
 import utilities.helpers.silver_scd_creator as scd_utils
 
+bronze_schema = spark.conf.get("pipeline.bronze_schema")
+
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
 # ==========================================================
 
 @dp.temporary_view(
-    name=f"vw_oah_supplier_cleaned",
+    name=f"vw_mri_region_cleaned",
     comment="..."
 )
 def create_temp_view():
 
     return (
         spark.readStream
-            .table("admin_bronze.stbl_oah_supplier")
+            .table(f"{bronze_schema}.stbl_mri_region")
             .select(
                 
                 # Business keys
-                utils.get_business_key(["s_suppkey", "_source_system"]),
+                utils.get_business_key(["r_regionkey", "_source_system"]),
 
                 # Core attributes
-                F.col("s_suppkey").cast("int").alias("s_suppkey"),
-                F.col("s_name").cast("string").alias("s_name"),
-                F.col("s_address"),
-                F.col("s_nationkey").cast("int").alias("s_nationkey"),
-                F.col("s_phone").cast("string").alias("s_phone"),
-                F.col("s_acctbal").cast("double").alias("s_acctbal"),
-                F.col("s_comment"),
+                F.col("r_regionkey"),
+                F.col("r_name").cast("string").alias("r_name"),
+                F.col("r_comment"),
 
                 # Additional Metadata
                 *utils.get_silver_metadata_columns()
@@ -44,7 +42,7 @@ def create_temp_view():
 # ==========================================================
 
 scd_utils.create_scd2_table(
-    view_name='vw_oah_supplier_cleaned',
-    scd2_table_name="stbl_oah_supplier_scd2",
-    keys=["s_suppkey"]
+    view_name='vw_mri_region_cleaned',
+    scd2_table_name="stbl_mri_region_hist",
+    keys=["r_regionkey"]
 )

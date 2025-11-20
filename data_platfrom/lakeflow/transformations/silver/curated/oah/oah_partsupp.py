@@ -5,29 +5,32 @@ from pyspark.sql.types import StringType, IntegerType
 import utilities.functions.common_functions as utils
 import utilities.helpers.silver_scd_creator as scd_utils
 
+bronze_schema = spark.conf.get("pipeline.bronze_schema")
+
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
 # ==========================================================
 
 @dp.temporary_view(
-    name=f"vw_mri_nation_cleaned",
+    name=f"vw_oah_partsupp_cleaned",
     comment="..."
 )
 def create_temp_view():
 
     return (
         spark.readStream
-            .table("admin_bronze.stbl_mri_nation")
+            .table(f"{bronze_schema}.stbl_oah_partsupp")
             .select(
                 
                 # Business keys
-                utils.get_business_key(["n_nationkey", "_source_system"]),
+                utils.get_business_key(["ps_partkey", "ps_suppkey", "_source_system"]),
 
                 # Core attributes
-                F.col("n_nationkey").cast(IntegerType()).alias("n_nationkey"),
-                F.col("n_name").cast(StringType()).alias("n_name"),
-                F.col("n_regionkey").cast(IntegerType()).alias("n_regionkey"),
-                F.col("n_comment").cast(IntegerType()).alias("n_comment"),
+                F.col("ps_partkey").cast("int").alias("ps_partkey"),
+                F.col("ps_suppkey").cast("int").alias("ps_suppkey"),
+                F.col("ps_availqty").cast("int").alias("ps_availqty"),
+                F.col("ps_supplycost").cast("double").alias("ps_supplycost"),
+                F.col("ps_comment"),
 
                 # Additional Metadata
                 *utils.get_silver_metadata_columns()
@@ -41,18 +44,8 @@ def create_temp_view():
 # ==========================================================
 
 scd_utils.create_scd2_table(
-    view_name='vw_mri_nation_cleaned',
-    scd2_table_name="stbl_mri_nation_scd2",
-    keys=["n_nationkey"]
+    view_name='vw_oah_partsupp_cleaned',
+    scd2_table_name="stbl_oah_partsupp_hist",
+    keys=["ps_partkey", "ps_suppkey"]
 )
 
-scd_utils.create_scd2_materialized_view_simple(
-    scd2_table_name="stbl_mri_nation_scd2",
-    scd2_materialized_view_name="mvw_mri_nation_scd2_simple"
-)
-
-scd_utils.create_scd2_materialized_view_advanced(
-    scd2_table_name='stbl_mri_nation_scd2',
-    scd2_materialized_view_name="mvw_mri_nation_scd2_advanced",
-    keys=["n_nationkey"]
-)

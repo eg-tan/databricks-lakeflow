@@ -28,19 +28,19 @@ def create_scd1_table(view_name, scd1_table_name, keys, sequence_by: str = "_raw
         stored_as_scd_type=1
     )
 
-def create_scd2_materialized_view_simple(scd2_table_name, scd2_materialized_view_name):
-    @dp.table(name=scd2_materialized_view_name)
-    def mv():
-        return dp.read(scd2_table_name) \
-                .withColumn("is_current", F.col("__END_AT").isNull()) \
-                .withColumn("__END_AT",
-                    F.when(
-                        F.col("__END_AT").isNull(),
-                        F.lit(MAX_END_AT)
-                    ).otherwise(F.col("__END_AT"))
-                )
+# def create_scd2_materialized_view_simple(scd2_table_name, scd2_materialized_view_name):
+#     @dp.table(name=scd2_materialized_view_name)
+#     def mv():
+#         return dp.read(scd2_table_name) \
+#                 .withColumn("is_current", F.col("__END_AT").isNull()) \
+#                 .withColumn("__END_AT",
+#                     F.when(
+#                         F.col("__END_AT").isNull(),
+#                         F.lit(MAX_END_AT)
+#                     ).otherwise(F.col("__END_AT"))
+#                 )
 
-def create_scd2_materialized_view_advanced(
+def create_scd2_materialized_view(
     scd2_table_name,
     scd2_materialized_view_name,
     keys

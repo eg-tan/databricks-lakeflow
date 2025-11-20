@@ -2,6 +2,8 @@ resources:
   pipelines:
     lakeflow_silver:
       name: lakeflow_silver
+      configuration:
+        pipeline.bronze_schema: "${var.schema}_bronze"
       libraries:
         - glob:
             include: ../../lakeflow/transformations/silver/**

@@ -5,6 +5,8 @@ from pyspark.sql.types import StringType, IntegerType
 import utilities.functions.common_functions as utils
 import utilities.helpers.silver_scd_creator as scd_utils
 
+bronze_schema = spark.conf.get("pipeline.bronze_schema")
+
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
 # ==========================================================
@@ -17,7 +19,7 @@ def create_temp_view():
 
     return (
         spark.readStream
-            .table("admin_bronze.stbl_oah_order")
+            .table(f"{bronze_schema}.stbl_oah_order")
             .select(
                 
                 # Business keys
@@ -47,6 +49,6 @@ def create_temp_view():
 
 scd_utils.create_scd1_table(
     view_name='vw_oah_order_cleaned',
-    scd1_table_name="stbl_oah_order_scd1",
+    scd1_table_name="stbl_oah_order_hist",
     keys=["o_orderkey"]
 )
