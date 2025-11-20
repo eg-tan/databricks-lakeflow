@@ -2,28 +2,26 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, IntegerType
 
-from utilities.functions.common_functions import get_business_key, get_silver_metadata_columns
-from utilities.helpers.silver_scd_table_creator import create_silver_scd_table
-
-ENTITY_NAME = 'mri_nation'
+import utilities.functions.common_functions as utils
+import utilities.helpers.silver_scd_creator as scd_utils
 
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
 # ==========================================================
 
 @dp.temporary_view(
-    name=f"vw_{ENTITY_NAME}_cleaned",
+    name=f"vw_mri_nation_cleaned",
     comment="..."
 )
 def create_temp_view():
 
     return (
         spark.readStream
-            .table("bronze.stbl_mri_nation")
+            .table("admin_bronze.stbl_mri_nation")
             .select(
                 
                 # Business keys
-                get_business_key(["n_nationkey", "_source_system"]),
+                utils.get_business_key(["n_nationkey", "_source_system"]),
 
                 # Core attributes
                 F.col("n_nationkey").cast(IntegerType()).alias("n_nationkey"),
@@ -32,7 +30,7 @@ def create_temp_view():
                 F.col("n_comment").cast(IntegerType()).alias("n_comment"),
 
                 # Additional Metadata
-                *get_silver_metadata_columns()
+                *utils.get_silver_metadata_columns()
 
             )
     )
@@ -42,8 +40,19 @@ def create_temp_view():
 # TABLE: SCD Type 2 Implementation 
 # ==========================================================
 
-create_silver_scd_table(
-    entity_name=ENTITY_NAME,
-    business_keys=["n_nationkey"],
-    scd_type=2
+scd_utils.create_scd2_table(
+    view_name='vw_mri_nation_cleaned',
+    scd2_table_name="stbl_mri_nation_scd2",
+    keys=["n_nationkey"]
+)
+
+scd_utils.create_scd2_materialized_view_simple(
+    scd2_table_name="stbl_mri_nation_scd2",
+    scd2_materialized_view_name="mvw_mri_nation_scd2_simple"
+)
+
+scd_utils.create_scd2_materialized_view_advanced(
+    scd2_table_name='stbl_mri_nation_scd2',
+    scd2_materialized_view_name="mvw_mri_nation_scd2_advanced",
+    keys=["n_nationkey"]
 )

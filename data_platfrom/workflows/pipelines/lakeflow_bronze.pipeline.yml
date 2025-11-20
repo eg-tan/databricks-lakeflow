@@ -5,7 +5,7 @@ resources:
       libraries:
         - glob:
             include: ../../lakeflow/transformations/bronze/**
-      schema: bronze
-      catalog: dev
+      catalog: ${var.catalog}
+      schema: ${var.schema}_bronze
       serverless: true
       root_path: ${workspace.file_path}/lakeflow

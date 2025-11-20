@@ -5,7 +5,7 @@ resources:
       libraries:
         - glob:
             include: ../../lakeflow/transformations/silver/**
-      schema: silver
-      catalog: dev
+      catalog: ${var.catalog}
+      schema: ${var.schema}_silver
       serverless: true
       root_path: ${workspace.file_path}/lakeflow

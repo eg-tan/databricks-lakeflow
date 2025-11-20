@@ -2,28 +2,26 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, IntegerType
 
-from utilities.functions.common_functions import get_business_key, get_silver_metadata_columns
-from utilities.helpers.silver_scd_table_creator import create_silver_scd_table
-
-ENTITY_NAME = 'mri_part'
+import utilities.functions.common_functions as utils
+import utilities.helpers.silver_scd_creator as scd_utils
 
 # ==========================================================
 # TEMP VIEW: Cleaned Source Data
 # ==========================================================
 
 @dp.temporary_view(
-    name=f"vw_{ENTITY_NAME}_cleaned",
+    name=f"vw_mri_part_cleaned",
     comment="..."
 )
 def create_temp_view():
 
     return (
         spark.readStream
-            .table("bronze.stbl_mri_part")
+            .table("admin_bronze.stbl_mri_part")
             .select(
                 
                 # Business keys
-                get_business_key(["p_partkey", "_source_system"]),
+                utils.get_business_key(["p_partkey", "_source_system"]),
 
                 # Core attributes
                 F.col("p_partkey").cast("int").alias("p_partkey"),
@@ -37,7 +35,7 @@ def create_temp_view():
                 F.col("p_comment"),
 
                 # Additional Metadata
-                *get_silver_metadata_columns()
+                *utils.get_silver_metadata_columns()
 
             )
     )
@@ -47,8 +45,8 @@ def create_temp_view():
 # TABLE: SCD Type 2 Implementation 
 # ==========================================================
 
-create_silver_scd_table(
-    entity_name=ENTITY_NAME,
-    business_keys=["p_partkey"],
-    scd_type=2
+scd_utils.create_scd2_table(
+    view_name='vw_mri_part_cleaned',
+    scd2_table_name="stbl_mri_part_scd2",
+    keys=["p_partkey"]
 )

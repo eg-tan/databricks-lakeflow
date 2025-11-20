@@ -1,7 +1,7 @@
 # This is a Databricks asset bundle definition for segro_data_platfrom.
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: segro_data_platfrom
+  name: data_platfrom
   uuid: 42a13a55-8e0b-48c9-b543-2efb0d728455
 
 include:
@@ -16,7 +16,7 @@ variables:
     description: The schema to use
 
 targets:
-  dev:
+  personal_dev:
     # The default target uses 'mode: development' to create a development copy.
     # - Deployed resources get prefixed with '[dev my_user_name]'
     # - Any job schedules and triggers are paused by default.
@@ -28,6 +28,13 @@ targets:
     variables:
       catalog: dev
       schema: ${workspace.current_user.short_name}
+  dev:
+    mode: development
+    workspace:
+      host: https://adb-2536922427259734.14.azuredatabricks.net
+    variables:
+      catalog: dev
+      schema: dev
   prod:
     mode: production
     workspace:
@@ -35,7 +42,7 @@ targets:
       # We explicitly deploy to /Workspace/Users/admin@vertlib00gmail.onmicrosoft.com to make sure we only have a single copy.
       root_path: /Workspace/Users/admin@vertlib00gmail.onmicrosoft.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: dev
+      catalog: prod
       schema: prod
     permissions:
       - user_name: admin@vertlib00gmail.onmicrosoft.com
