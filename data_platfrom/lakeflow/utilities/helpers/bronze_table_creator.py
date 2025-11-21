@@ -56,7 +56,7 @@ def create_bronze_table(
     )
     def bronze_table():
         """
-        Inner function that defines the streaming table logic. 
+        Inner function that defines the streaming table logic.
         This function is executed by DLT to create and maintain the bronze table.
         """
         # Construct full ABFSS path to the source Delta table
@@ -65,12 +65,14 @@ def create_bronze_table(
         
         return (
             spark.readStream
-            .format("delta") 
-            .option("mergeSchema", "true") 
+            .format("delta")
+            .option("mergeSchema", "true")
             .load(full_path)
-            # Add file-level lineage metadata from Spark's _metadata pseudo-column
-            .withColumn("_raw_file_path", F.col("_metadata.file_path"))
-            .withColumn("_raw_file_modification_time", F.col("_metadata.file_modification_time"))
+            .select(
+                F.col("_metadata.file_path").alias("_raw_file_path"),
+                F.col("_metadata.file_modification_time").alias("_raw_file_modification_time"),
+                "*"  
+            )
         )
     
     return bronze_table

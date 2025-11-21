@@ -23,10 +23,8 @@
 # MAGIC   - `_commit_version` → `_raw_commit_version`: Delta Lake transaction version number (monotonically increasing)
 # MAGIC   - `_commit_timestamp` → `_raw_commit_timestamp`: Exact timestamp when change was committed at source
 # MAGIC - Adds additional audit columns for data lineage and troubleshooting:
-# MAGIC   - `_raw_file_path`: Source file location from Spark metadata
-# MAGIC   - `_raw_file_modification_time`: File last modified timestamp
 # MAGIC   - `_source_system`: Source system identifier (from input parameter)
-# MAGIC   - `_ingestion_timestamp`: Pipeline processing timestamp (current time)
+# MAGIC   - `_processing_timestamp`: Pipeline processing timestamp
 # MAGIC - Processes only new changes since last successful checkpoint
 # MAGIC - Partitioned by `_processing_date`  and `_processing_timestamp` 
 # MAGIC ---
@@ -37,10 +35,10 @@
 # MAGIC
 # MAGIC | Column | Type | Source | Description |
 # MAGIC |--------|------|--------|-------------|
+# MAGIC | `_source_system` | String | Parameter | Source system identifier |
 # MAGIC | `_raw_change_type` | String | CDF | Type of change operation |
 # MAGIC | `_raw_commit_version` | Long | CDF | Version number of the change |
 # MAGIC | `_raw_commit_timestamp` | Timestamp | CDF | When the change occurred |
-# MAGIC | `_source_system` | String | Parameter | Source system identifier |
 # MAGIC | `_processing_date` | Date | Pipeline | Date when the record was ingested |
 # MAGIC | `_processing_timestamp` | Timestamp | Pipeline | Timestamp when the record was ingested |
 # MAGIC ---
@@ -117,7 +115,6 @@ SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN = "_commit_timestamp"
 TARGET_CDF_CHANGE_TYPE_COLUMN = f"_raw{SOURCE_CDF_CHANGE_TYPE_COLUMN}"
 TARGET_CDF_COMMIT_VERSION_COLUMN = f"_raw{SOURCE_CDF_COMMIT_VERSION_COLUMN}"
 TARGET_CDF_COMMIT_TIMESTAMP_COLUMN = f"_raw{SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN}"
-
 
 PROCESSING_TIMESTAMP_COLUMN = "_processing_timestamp"
 PROCESSING_DATE_COLUMN = "_processing_date"
@@ -320,7 +317,7 @@ def is_initial_run(target_table_path: str) -> bool:
 
 # COMMAND ----------
 
-def add_cdf_metadata_fields(
+def add_metadata_fields(
     df: DataFrame, 
     version: int, 
     commit_timestamp: datetime = None
@@ -350,7 +347,8 @@ def add_cdf_metadata_fields(
         f"commit_timestamp: {commit_timestamp})"
     )
     
-    return (
+    # Add the metadata columns
+    df = (
         df
         .withColumn(SOURCE_CDF_CHANGE_TYPE_COLUMN, lit(DEFAULT_CHANGE_TYPE))
         .withColumn(SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN, lit(commit_timestamp))
@@ -359,6 +357,23 @@ def add_cdf_metadata_fields(
         .withColumn(PROCESSING_DATE_COLUMN, current_date())
         .withColumn(SOURCE_SYSTEM_COLUMN, lit(SOURCE_SYSTEM))
     )
+
+    metadata_cols = [
+        SOURCE_SYSTEM_COLUMN,
+        SOURCE_CDF_CHANGE_TYPE_COLUMN,
+        SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN,
+        SOURCE_CDF_COMMIT_VERSION_COLUMN,
+        PROCESSING_TIMESTAMP_COLUMN,
+        PROCESSING_DATE_COLUMN,
+    ]
+
+    df = df.select(
+        *metadata_cols,
+        *[c for c in df.columns if c not in metadata_cols]
+    )
+
+    return df
+
 
 
 def add_pipeline_run_metadata(df: DataFrame) -> DataFrame:
@@ -419,7 +434,6 @@ def prepare_cdf_for_ingestion(df: DataFrame) -> DataFrame:
         .withColumnRenamed(SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN, TARGET_CDF_COMMIT_TIMESTAMP_COLUMN)
         .withColumnRenamed(SOURCE_CDF_COMMIT_VERSION_COLUMN, TARGET_CDF_COMMIT_VERSION_COLUMN)
     )
-    enriched_df.display()
     return enriched_df
 
 
@@ -452,7 +466,7 @@ def read_snapshot_before_cdf(source_table_path: str, cdf_enabled_version: int) -
     
     # Add CDF metadata fields
     boundary_ts = get_commit_timestamp_for_version(source_table_path, read_version)
-    enriched_df = add_cdf_metadata_fields(snapshot_df, version=read_version, commit_timestamp=boundary_ts)
+    enriched_df = add_metadata_fields(snapshot_df, version=read_version, commit_timestamp=boundary_ts)
     
     logger.info(f"Snapshot read complete. Records: {enriched_df.count()}")
     return enriched_df
@@ -512,7 +526,6 @@ def write_to_target(df: DataFrame, target_table_path: str, mode: str = "append")
         .mode(mode) \
         .option('mergeSchema', 'true') \
         .option('schemaEvolution', 'true') \
-        .partitionBy(PROCESSING_DATE_COLUMN, PROCESSING_TIMESTAMP_COLUMN) \
         .save(target_table_path)
 
     if mode == "overwrite":
