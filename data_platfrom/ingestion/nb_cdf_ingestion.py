@@ -663,7 +663,7 @@ def run_ingestion_pipeline(source_table_path: str, target_table_path: str) -> Op
     
     # Step 2: Check if this is initial run
     initial_run = is_initial_run(target_table_path)
-    print(f"Initial run: {initial_run}")
+
     if initial_run:
         # YES - Initial run: Read BEFORE CDF version
         logger.info("Decision: INITIAL RUN -> Read data BEFORE CDF version")
