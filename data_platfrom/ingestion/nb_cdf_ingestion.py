@@ -110,9 +110,14 @@ from pyspark.sql.types import LongType
 from pyspark.sql.utils import AnalysisException
 
 # Constants
-CDF_CHANGE_TYPE_COLUMN = "_change_type"
-CDF_COMMIT_VERSION_COLUMN = "_commit_version"
-CDF_COMMIT_TIMESTAMP_COLUMN = "_commit_timestamp"
+SOURCE_CDF_CHANGE_TYPE_COLUMN = "_change_type"
+SOURCE_CDF_COMMIT_VERSION_COLUMN = "_commit_version"
+SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN = "_commit_timestamp"
+
+TARGET_CDF_CHANGE_TYPE_COLUMN = f"_raw{SOURCE_CDF_CHANGE_TYPE_COLUMN}"
+TARGET_CDF_COMMIT_VERSION_COLUMN = f"_raw{SOURCE_CDF_COMMIT_VERSION_COLUMN}"
+TARGET_CDF_COMMIT_TIMESTAMP_COLUMN = f"_raw{SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN}"
+
 
 PROCESSING_TIMESTAMP_COLUMN = "_processing_timestamp"
 PROCESSING_DATE_COLUMN = "_processing_date"
@@ -270,10 +275,10 @@ def get_last_processed_version(target_table_path: str) -> Optional[int]:
     except AnalysisException:
         return None
 
-    if CDF_COMMIT_VERSION_COLUMN not in df.columns:
+    if  TARGET_CDF_COMMIT_VERSION_COLUMN not in df.columns:
         return None
 
-    v = df.select(spark_max(col(CDF_COMMIT_VERSION_COLUMN)).alias("v")).collect()[0]["v"]
+    v = df.select(spark_max(col(TARGET_CDF_COMMIT_VERSION_COLUMN)).alias("v")).collect()[0]["v"]
     return int(v) if v is not None else None
 
 
@@ -347,9 +352,9 @@ def add_cdf_metadata_fields(
     
     return (
         df
-        .withColumn(CDF_CHANGE_TYPE_COLUMN, lit(DEFAULT_CHANGE_TYPE))
-        .withColumn(CDF_COMMIT_TIMESTAMP_COLUMN, lit(commit_timestamp))
-        .withColumn(CDF_COMMIT_VERSION_COLUMN, lit(version).cast(LongType()))
+        .withColumn(SOURCE_CDF_CHANGE_TYPE_COLUMN, lit(DEFAULT_CHANGE_TYPE))
+        .withColumn(SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN, lit(commit_timestamp))
+        .withColumn(SOURCE_CDF_COMMIT_VERSION_COLUMN, lit(version).cast(LongType()))
         .withColumn(PROCESSING_TIMESTAMP_COLUMN, current_timestamp())
         .withColumn(PROCESSING_DATE_COLUMN, current_date())
         .withColumn(SOURCE_SYSTEM_COLUMN, lit(SOURCE_SYSTEM))
@@ -400,21 +405,21 @@ def prepare_cdf_for_ingestion(df: DataFrame) -> DataFrame:
     enriched_df = (
         df
         # 1. Remove pre-image rows (old values before update)
-        .filter(col(CDF_CHANGE_TYPE_COLUMN) != "update_preimage")
+        .filter(col(SOURCE_CDF_CHANGE_TYPE_COLUMN) != "update_preimage")
 
         # 2. Normalize the change_type values
         .withColumn(
-            CDF_CHANGE_TYPE_COLUMN,
-            when(col(CDF_CHANGE_TYPE_COLUMN) == "update_postimage", "update")
-            .otherwise(col(CDF_CHANGE_TYPE_COLUMN))
+            SOURCE_CDF_CHANGE_TYPE_COLUMN,
+            when(col(SOURCE_CDF_CHANGE_TYPE_COLUMN) == "update_postimage", "update")
+            .otherwise(col(SOURCE_CDF_CHANGE_TYPE_COLUMN))
         )
 
         # 3. Rename raw CDF metadata columns
-        .withColumnRenamed(CDF_CHANGE_TYPE_COLUMN, f"_raw{CDF_CHANGE_TYPE_COLUMN}")
-        .withColumnRenamed(CDF_COMMIT_TIMESTAMP_COLUMN, f"_raw{CDF_COMMIT_TIMESTAMP_COLUMN}")
-        .withColumnRenamed(CDF_COMMIT_VERSION_COLUMN, f"_raw{CDF_COMMIT_VERSION_COLUMN}")
+        .withColumnRenamed(SOURCE_CDF_CHANGE_TYPE_COLUMN, TARGET_CDF_CHANGE_TYPE_COLUMN)
+        .withColumnRenamed(SOURCE_CDF_COMMIT_TIMESTAMP_COLUMN, TARGET_CDF_COMMIT_TIMESTAMP_COLUMN)
+        .withColumnRenamed(SOURCE_CDF_COMMIT_VERSION_COLUMN, TARGET_CDF_COMMIT_VERSION_COLUMN)
     )
-
+    enriched_df.display()
     return enriched_df
 
 
@@ -500,7 +505,7 @@ def write_to_target(df: DataFrame, target_table_path: str, mode: str = "append")
     
     # logger.info(f"Writing {df_with_timestamp.count()} records to {target_table_path} in '{mode}' mode")
     logger.info(f"Writing data to {target_table_path} in '{mode}' mode")
-    logger.info(f"Partitioning by: {PROCESSING_TIMESTAMP_COLUMN}")
+    logger.info(f"Partitioning by: {PROCESSING_DATE_COLUMN} and {PROCESSING_TIMESTAMP_COLUMN}")
     
     df_with_timestamp.write \
         .format("delta") \
@@ -653,12 +658,12 @@ def run_ingestion_pipeline(source_table_path: str, target_table_path: str) -> Op
     cdf_enabled_version = get_first_cdf_enabled_version(source_table_path)
     
     if cdf_enabled_version is None:
-        logger.error("CDF is enabled but cannot find enablement version. Falling back to snapshot.")
+        logger.error("CDF is enabled but cannot find enablement version. Existing.")
         raise
     
     # Step 2: Check if this is initial run
     initial_run = is_initial_run(target_table_path)
-    
+    print(f"Initial run: {initial_run}")
     if initial_run:
         # YES - Initial run: Read BEFORE CDF version
         logger.info("Decision: INITIAL RUN -> Read data BEFORE CDF version")
